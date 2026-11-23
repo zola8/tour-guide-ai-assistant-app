@@ -1,0 +1,5 @@
+chromadb
+img2vec_pytorch
+langchain
+langchain-community
+unstructured
