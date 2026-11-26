@@ -8,8 +8,9 @@ pip install -r requirements.txt
 
 ### Dependencies
 
-Ollama local embedding.
+Ollama local models.
 
 ```shell
-ollama pull qwen3-embedding:0.6b
+ollama pull qwen3-embedding:4b
+ollama pull qwen3.5:4b
 ```

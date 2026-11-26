@@ -26,6 +26,7 @@ def ingest_images():
     image_collection = client_db.get_or_create_collection(
         name="images",
         embedding_function=image_embeddings,
+        metadata={"hnsw:space": "cosine"},
     )
 
     for _dir in os.listdir(DATA_PATH):

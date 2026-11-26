@@ -3,6 +3,7 @@ from typing import Any
 from typing import Dict
 
 import chromadb
+import numpy as np
 from PIL import Image
 from chromadb import EmbeddingFunction
 from chromadb import Embeddings
@@ -24,7 +25,7 @@ def configure_logging():
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    for name in ("httpcore", "httpx", "urllib3", "chromadb", "chromadb.telemetry"):
+    for name in ("httpcore", "httpx", "urllib3", "chromadb", "chromadb.telemetry", "PIL"):
         logging.getLogger(name).setLevel(logging.WARNING)
 
 
@@ -42,7 +43,13 @@ class ImageEmbeddings(EmbeddingFunction):
         return embeddings
 
     def _get_imgs_embeddings(self, image_list: Images) -> Embeddings:
-        return [self.model.get_vec(Image.fromarray(img)).tolist() for img in image_list]
+        out = []
+        for img in image_list:
+            vec = self.model.get_vec(Image.fromarray(img)).tolist()
+            arr = np.asarray(vec, dtype=np.float32)
+            arr = arr / (np.linalg.norm(arr) + 1e-8)  # L2 normalize
+            out.append(arr.tolist())
+        return out
 
     @staticmethod
     def name() -> str:
