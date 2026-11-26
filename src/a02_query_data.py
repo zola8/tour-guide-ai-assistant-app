@@ -62,27 +62,31 @@ if __name__ == '__main__':
     logger.info("--- START ---")
 
     test_list = [
-        ('eth_zh.jpg',
-         [
-             'When is the Academic department open?',
-             'Recommend me practical tips',
-         ]),
-        ('fraumunster.jpg', []),
-        ('grossmunster.jpg', []),
-        ('operahouse_zh.jpg', []),
+        ('eth_zh.jpg', [
+            # 'When is the Academic department open?',
+            # 'Recommend me practical tips',
+        ]),
+        ('fraumunster.jpg', [
+            # 'Can I visit the crypt?'
+        ]),
+        ('grossmunster.jpg', [
+            # 'I have Zurich card, what are my benefits?'
+        ]),
+        ('operahouse_zh.jpg', [
+            'I lost my hat there. What shall I do?'
+        ]),
     ]
 
     for test_img, test_questions in test_list:
         query_img = f"./test_data/{test_img}"
         classification = classify_image(client_db=client_db, query_img=query_img)
-        logger.info(f"Image name: {test_img}, classification: {classification}")
+        logger.info(f"Test image: {test_img}, classification: {classification}")
 
         for question in test_questions:
             chunks_text, chunks_metadata = get_similar_documents(client_db=client_db, query_question=question,
                                                                  img_category=classification)
-            answer = create_response(question, chunks_text, chunks_metadata)
-
             logger.info(f"\tQ: {question}")
+            answer = create_response(question, chunks_text, chunks_metadata)
             logger.info(f"\tA: {answer}")
 
     logger.info("--- END ---")

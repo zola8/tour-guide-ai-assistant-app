@@ -20,9 +20,12 @@ EMBEDDING_MODEL = "qwen3-embedding:4b"
 
 def configure_logging():
     logging.basicConfig(
-        level="INFO",
+        level="DEBUG",
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    for name in ("httpcore", "httpx", "urllib3", "chromadb", "chromadb.telemetry"):
+        logging.getLogger(name).setLevel(logging.WARNING)
 
 
 # ----- Embedding function
