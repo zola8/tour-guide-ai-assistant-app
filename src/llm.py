@@ -37,12 +37,10 @@ def create_response(query_question, chunks_text=None, chunks_metadata=None):
         model=LLM_MODEL,
         messages=[
             {'role': 'system', 'content': system_prompt},
-            {'role': 'user', 'content': query_question},
+            {'role': 'user', 'content': query_question + '\n/no_think'},
         ],
-        options={
-            "temperature": 0.2,
-            "num_ctx": 8192,
-        },
+        options={"temperature": 0.2, "num_ctx": 8192},
+        keep_alive="10m",
     )
 
     return response['message']['content']

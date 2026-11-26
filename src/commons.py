@@ -7,11 +7,13 @@ from PIL import Image
 from chromadb import EmbeddingFunction
 from chromadb import Embeddings
 from chromadb.api.types import Images
+from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
 from chromadb.utils.embedding_functions import register_embedding_function
 from img2vec_pytorch import Img2Vec
 
 DATA_PATH = "./data"
 DB_PATH = "./db"
+EMBEDDING_MODEL = "qwen3-embedding:4b"
 
 
 # ----- Logging
@@ -25,6 +27,7 @@ def configure_logging():
 
 # ----- Embedding function
 
+
 @register_embedding_function
 class ImageEmbeddings(EmbeddingFunction):
 
@@ -36,19 +39,22 @@ class ImageEmbeddings(EmbeddingFunction):
         return embeddings
 
     def _get_imgs_embeddings(self, image_list: Images) -> Embeddings:
-        return [self.model.get_vec(Image.fromarray(img)) for img in image_list]
+        return [self.model.get_vec(Image.fromarray(img)).tolist() for img in image_list]
 
     @staticmethod
     def name() -> str:
         return "img2vec"
 
     def get_config(self) -> Dict[str, Any]:
-        return dict(model=self.model)
+        return {}
 
     @staticmethod
     def build_from_config(config: Dict[str, Any]) -> "EmbeddingFunction":
-        return ImageEmbeddings(config['model'])
+        return ImageEmbeddings()
 
+
+document_embeddings = OllamaEmbeddingFunction(url="http://localhost:11434", model_name=EMBEDDING_MODEL)
+image_embeddings = ImageEmbeddings()
 
 # ----- Database
 

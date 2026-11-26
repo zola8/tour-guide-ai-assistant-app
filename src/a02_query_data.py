@@ -2,52 +2,60 @@ import logging
 
 import cv2
 
-from src.commons import DATA_PATH
-from src.commons import ImageEmbeddings
 from src.commons import client_db
 from src.commons import configure_logging
+from src.commons import document_embeddings
+from src.commons import image_embeddings
 from src.llm import create_response
 
 configure_logging()
 
 logger = logging.getLogger('a02_query_data')
 
-image_embedding = ImageEmbeddings()
-
 
 def classify_image(client_db, query_img):
-    """ Query the most similar image to the query image """
     if query_img is None:
         logger.error("No query image provided")
         return None
 
-    collection = client_db.get_collection(name='images')
-    logger.debug(f"Get image collection: {collection}")
+    collection = client_db.get_collection(
+        name="images",
+        embedding_function=image_embeddings,
+    )
 
     img = cv2.imread(query_img)
-    _embeddings = image_embedding([img])
-    logger.debug(f"Image loaded and converted to embedding: {query_img}")
+    if img is None:
+        logger.error("Could not read image: %s", query_img)
+        return None
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    results = collection.query(
-        query_embeddings=_embeddings,
-        n_results=1,
-    )
+    embeddings = image_embeddings([img_rgb])
 
-    # flat = {k: v[0] if isinstance(v, list) and v else v for k, v in result.items()}
-    # logger.debug(f"Result: {json.dumps(flat, indent=2)}")
+    results = collection.query(query_embeddings=embeddings, n_results=1)
     logger.debug(
-        f"query_img: {query_img} ; similar image found: {results['ids'][0][0]} ; distance: {results['distances'][0][0]}")
-
-    return results['ids'][0][0].split('-')[0]
-
-
-def get_similar_documents(client_db, query_question, img_category):
-    collection = client_db.get_collection(name=f"documents_{img_category}")
-    results = collection.query(
-        query_texts=[query_question],
-        n_results=3,
+        "query_img=%s -> id=%s distance=%s",
+        query_img, results['ids'][0][0], results['distances'][0][0],
     )
-    return results['documents'][0], results['metadatas'][0]
+
+    meta = results['metadatas'][0][0] or {}
+    return meta.get("category") or results['ids'][0][0].split('-')[0]
+
+
+def get_similar_documents(client_db, query_question, img_category, max_distance=1.0):
+    collection = client_db.get_collection(
+        name=f"documents__{img_category}",
+        embedding_function=document_embeddings,
+    )
+    results = collection.query(query_texts=[query_question], n_results=5)
+    docs = results['documents'][0]
+    metas = results['metadatas'][0]
+    dists = results['distances'][0]
+    filtered = [(d, m) for d, m, dist in zip(docs, metas, dists) if dist < max_distance]
+
+    logger.info("category=%s, retrieved=%d, kept=%d", img_category, len(docs), len(filtered))
+    if not filtered:
+        return [], []
+    return [d for d, _ in filtered], [m for _, m in filtered]
 
 
 if __name__ == '__main__':
@@ -57,7 +65,7 @@ if __name__ == '__main__':
         ('eth_zh.jpg',
          [
              'When is the Academic department open?',
-             'Recommend me practical tips'
+             'Recommend me practical tips',
          ]),
         ('fraumunster.jpg', []),
         ('grossmunster.jpg', []),
@@ -65,7 +73,7 @@ if __name__ == '__main__':
     ]
 
     for test_img, test_questions in test_list:
-        query_img = f"{DATA_PATH}/test/{test_img}"
+        query_img = f"./test_data/{test_img}"
         classification = classify_image(client_db=client_db, query_img=query_img)
         logger.info(f"Image name: {test_img}, classification: {classification}")
 
