@@ -5,3 +5,4 @@ langchain-community
 unstructured
 ollama
 libmagic
+opencv-python

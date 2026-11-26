@@ -1,63 +1,21 @@
 import logging
 import os
-from typing import Any
-from typing import Dict
 
-import chromadb
-from PIL import Image
-from chromadb import EmbeddingFunction
-from chromadb import Embeddings
-from chromadb.api.types import Images
 from chromadb.utils.data_loaders import ImageLoader
 from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
-from chromadb.utils.embedding_functions import register_embedding_function
-from img2vec_pytorch import Img2Vec
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-logging.basicConfig(
-    level="INFO",
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+from src.commons import DATA_PATH
+from src.commons import ImageEmbeddings
+from src.commons import client_db
+from src.commons import configure_logging
+
+configure_logging()
 
 logger = logging.getLogger(__name__)
 
 os.environ["UNSTRUCTURED_DISABLE_NOTICE"] = "1"
-
-DATA_PATH = "./data"
-DB_PATH = "./db"
-
-
-# ----- Embedding function
-
-@register_embedding_function
-class ImageEmbeddings(EmbeddingFunction):
-
-    def __init__(self):
-        self.model = Img2Vec()
-
-    def __call__(self, input: Images) -> Embeddings:
-        embeddings = self._get_imgs_embeddings(input)
-        return embeddings
-
-    def _get_imgs_embeddings(self, image_list: Images) -> Embeddings:
-        return [self.model.get_vec(Image.fromarray(img)) for img in image_list]
-
-    @staticmethod
-    def name() -> str:
-        return "img2vec"
-
-    def get_config(self) -> Dict[str, Any]:
-        return dict(model=self.model)
-
-    @staticmethod
-    def build_from_config(config: Dict[str, Any]) -> "EmbeddingFunction":
-        return ImageEmbeddings(config['model'])
-
-
-# ----- Database
-
-client_db = chromadb.PersistentClient(path=DB_PATH)
 
 
 def ingest_images():
@@ -112,13 +70,22 @@ def ingest_documents():
         logger.info(f"Processed documents in 'documents_{_dir}': {len(documents)}, chunks: {len(chunks)}")
 
 
+def cleanup_db():
+    for collection in client_db.list_collections():
+        client_db.delete_collection(name=collection.name)
+    client_db.clear_system_cache()
+
+
 if __name__ == '__main__':
     logger.info("--- START ---")
 
+    logger.info("--- Cleanup database ---")
+    cleanup_db()
+
     logger.info("--- Ingest images ---")
-    # ingest_images()
+    ingest_images()
 
     logger.info("--- Ingest documents ---")
-    # ingest_documents()
+    ingest_documents()
 
     logger.info("--- END ---")
